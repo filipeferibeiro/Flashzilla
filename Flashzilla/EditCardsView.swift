@@ -5,12 +5,14 @@
 //  Created by Filipe Fernandes on 04/09/25.
 //
 
+import SwiftData
 import SwiftUI
 
 struct EditCardsView: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(\.modelContext) var modelContext
     
-    @State private var cards = [Card]()
+    @Query(sort: \Card.createdAt, order: .reverse) var cards: [Card]
     @State private var newPrompt: String = ""
     @State private var newAnswer: String = ""
     
@@ -40,7 +42,6 @@ struct EditCardsView: View {
             .toolbar {
                 Button("Done", action: done)
             }
-            .onAppear(perform: loadData)
         }
     }
     
@@ -48,18 +49,9 @@ struct EditCardsView: View {
         dismiss()
     }
     
-    func loadData() {
-        if let data = UserDefaults.standard.data(forKey: "Cards") {
-            if let decoded = try? JSONDecoder().decode([Card].self, from: data) {
-                cards = decoded
-            }
-        }
-    }
-    
-    func saveData() {
-        if let data = try? JSONEncoder().encode(cards) {
-            UserDefaults.standard.set(data, forKey: "Cards")
-        }
+    func clearForm() {
+        newPrompt = ""
+        newAnswer = ""
     }
     
     func addCard() {
@@ -69,16 +61,18 @@ struct EditCardsView: View {
         guard trimmedPrompt.isEmpty == false && trimmedAnswer.isEmpty == false else { return }
         
         let card = Card(prompt: trimmedPrompt, answer: trimmedAnswer)
-        cards.insert(card, at: 0)
-        saveData()
+        modelContext.insert(card)
+        clearForm()
     }
     
     func removeCards(at offset: IndexSet) {
-        cards.remove(atOffsets: offset)
-        saveData()
+        for index in offset {
+            modelContext.delete(cards[index])
+        }
     }
 }
 
 #Preview {
     EditCardsView()
+        .modelContainer(for: Card.self)
 }

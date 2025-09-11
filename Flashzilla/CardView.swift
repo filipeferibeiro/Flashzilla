@@ -15,7 +15,7 @@ struct CardView: View {
     @State private var isShowingAnswer = false
     
     let card: Card
-    var removal: (() -> Void)? = nil
+    var removal: ((_ : Bool) -> Void)? = nil
     
     var body: some View {
         ZStack {
@@ -30,7 +30,7 @@ struct CardView: View {
                     accessibilityDifferentiateWithoutColor
                     ? nil
                     : RoundedRectangle(cornerRadius: 25)
-                        .fill(offset.width > 0 ? .green : .red)
+                        .fill(offset.width > 0 ? .green : offset.width == 0 ? .white : .red)
                 )
                 .shadow(radius: 10)
             
@@ -64,8 +64,13 @@ struct CardView: View {
                     offset = gesture.translation
                 }
                 .onEnded { _ in
+                    let isWrong = offset.width < -100
                     if abs(offset.width) > 100 {
-                        removal?()
+                        removal?(isWrong)
+                        
+                        if isWrong {
+                            offset = .zero
+                        }
                     } else {
                         offset = .zero
                     }

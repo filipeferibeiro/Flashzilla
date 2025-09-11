@@ -5,6 +5,7 @@
 //  Created by Filipe Fernandes on 29/07/25.
 //
 
+import SwiftData
 import SwiftUI
 
 extension View {
@@ -20,6 +21,9 @@ struct ContentView: View {
     @Environment(\.accessibilityVoiceOverEnabled) var accessibilityVoiceOverEnabled
     @Environment(\.scenePhase) var scenePhase
     
+    @Environment(\.modelContext) var modelContext
+    
+    @Query(sort: \Card.createdAt) var savedCards: [Card]
     @State private var cards = [Card]()
     @State private var timeRemaining = 100
     @State private var isActive = true
@@ -43,10 +47,14 @@ struct ContentView: View {
                     .clipShape(.capsule)
                 
                 ZStack {
-                    ForEach(0..<cards.count, id: \.self) { index in
-                        CardView(card: cards[index]) {
+                    ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
+                        CardView(card: card) { isWrong in
                             withAnimation {
-                                removeCard(at: index)
+                                if isWrong {
+                                    reputCard(card)
+                                } else {
+                                    removeCard(at: index)
+                                }
                             }
                         }
                         .stacked(at: index, in: cards.count)
@@ -146,12 +154,19 @@ struct ContentView: View {
     }
     
     func removeCard(at index: Int) {
-        guard index >= 0 else { return }
+        guard index >= 0 && index < cards.count else { return }
         
         cards.remove(at: index)
         
         if cards.isEmpty {
             isActive = false
+        }
+    }
+    
+    func reputCard(_ card: Card) {
+        if let index = cards.firstIndex(where: { $0.id == card.id }) {
+            let removedCard = cards.remove(at: index)
+            cards.insert(removedCard, at: 0)
         }
     }
     
@@ -162,14 +177,11 @@ struct ContentView: View {
     }
     
     func loadData() {
-        if let data = UserDefaults.standard.data(forKey: "Cards") {
-            if let decoded = try? JSONDecoder().decode([Card].self, from: data) {
-                cards = decoded
-            }
-        }
+        cards = savedCards
     }
 }
 
 #Preview {
     ContentView()
+        .modelContainer(for: Card.self)
 }
